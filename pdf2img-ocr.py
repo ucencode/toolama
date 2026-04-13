@@ -93,13 +93,18 @@ def ocr_pdf(path: str, dpi: int = 200, ocr_model: str = "glm-ocr:bf16") -> str:
         print(f"[page {i+1}/{len(pages)}] sending to {ocr_model}...", end=" ", flush=True)
         response: ChatResponse = chat(
             model=ocr_model,
-            system="You are an expert OCR system specialized in extracting text from slides and documents.",
             options={"temperature": 0, "think": False, "num_predict": 4096},
-            messages=[{
-                "role": "user",
-                "content": OCR_PROMPT,
-                "images": [raw]
-            }]
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are an expert OCR system specialized in extracting text from slides and documents."
+                },
+                {
+                    "role": "user",
+                    "content": OCR_PROMPT,
+                    "images": [raw]
+                }
+            ]
         )
 
         text = response.message.content
