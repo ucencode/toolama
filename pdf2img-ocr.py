@@ -70,7 +70,7 @@ def list_models(keywords: list[str]) -> list[str]:
     return models
 
 # ── stage 1: OCR ───────────────────────────────────────────
-def ocr_pdf(path: str, dpi: int = 200, ocr_model: str = "glm-ocr:bf16") -> str:
+def ocr_pdf(path: str, dpi: int = 200) -> str:
     print(f"[init] loading PDF: {path}")
     start_total = time.time()
 
@@ -115,7 +115,7 @@ def ocr_pdf(path: str, dpi: int = 200, ocr_model: str = "glm-ocr:bf16") -> str:
         full_text.append(f"--- Page {i+1} ---\n{text}")
 
     print(f"\n[ocr] completed in {time.time() - start_total:.2f}s")
-    return "\n\n".join(full_text)
+    return {"text": "\n\n".join(full_text), "tokens": total_tokens}
 
 
 # ── stage 1.5: eject ──────────────────────────────────────
@@ -126,9 +126,9 @@ def eject_model(model: str):
 
 
 # ── interactive prompts ────────────────────────────────────
-def ask_mode(raw_pages: list[str]) -> str:
+def ask_mode(raw_pages: list[str], total_tokens: int) -> str:
     total_chars = sum(len(p) for p in raw_pages)
-    approx_tokens = total_chars // 4  # rough estimate: 1 token ≈ 4 chars
+    approx_tokens = total_tokens 
 
     print(f"\nOCR result: {total_chars:,} chars (~{approx_tokens:,} tokens)")
     print("""
@@ -185,7 +185,6 @@ def parse_args():
     parser = argparse.ArgumentParser(description="PDF OCR Pipeline")
     parser.add_argument("file", help="Path to PDF file")
     parser.add_argument("--dpi", type=int, default=200, help="Render DPI (default: 200)")
-    parser.add_argument("--ocr-model", default="glm-ocr:bf16", help="OCR model (default: glm-ocr:bf16)")
     return parser.parse_args()
 
 
@@ -217,22 +216,22 @@ if __name__ == "__main__":
         exit(1)
     ocr_model = ask_model(vision_models, label="vision model")
 
-    raw_text = ocr_pdf(args.file, dpi=args.dpi, ocr_model=ocr_model)
+    ocr_result = ocr_pdf(args.file, dpi=args.dpi)
     eject_model(ocr_model)
 
-    mode = ask_mode()
+    mode = ask_mode(ocr_result["text"].split("\n\n"), ocr_result["tokens"])
 
     if mode == "skip":
-        save_outputs(raw_text, None, timestamp)
+        save_outputs(ocr_result["text"], None, timestamp)
     else:
         refine_models = list_models(REFINE_MODEL_KEYWORDS)
         if not refine_models:
             print("[error] no refine models found. check REFINE_MODEL_KEYWORDS.")
-            save_outputs(raw_text, None, timestamp)
+            save_outputs(ocr_result["text"], None, timestamp)
         else:
             model = ask_model(refine_models, label="refine model")
             lang = ask_language()
-            compiled_text = refine(raw_text, mode, lang, model)
-            save_outputs(raw_text, compiled_text, timestamp)
+            compiled_text = refine(ocr_result["text"], mode, lang, model)
+            save_outputs(ocr_result["text"], compiled_text, timestamp)
 
     print("\n[done]")
