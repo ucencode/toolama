@@ -10,7 +10,16 @@ from io import BytesIO
 from pdf2image import convert_from_path
 from ollama import chat, ChatResponse
 
-PROMPTS = {
+OCR_PROMPT = """You are an expert OCR system. Transcribe all text from this image accurately.
+- preserve original structure, hierarchy, and layout
+- include all visible text: titles, subtitles, bullets, labels, captions
+- maintain list formatting and indentation where present
+- do not interpret, explain, or summarize
+- do not add commentary or descriptions of images/diagrams
+- if text is partially visible or unclear, make best effort
+- output only the transcribed text, nothing else"""
+
+REFINE_PROMPTS = {
     "clean": """Clean the following OCR text:
 - fix broken words and grammar
 - remove noise and repetition
@@ -84,10 +93,11 @@ def ocr_pdf(path: str, dpi: int = 200, ocr_model: str = "glm-ocr:bf16") -> str:
         print(f"[page {i+1}/{len(pages)}] sending to {ocr_model}...", end=" ", flush=True)
         response: ChatResponse = chat(
             model=ocr_model,
+            system="You are an expert OCR system specialized in extracting text from slides and documents.",
             options={"temperature": 0, "think": False, "num_predict": 4096},
             messages=[{
                 "role": "user",
-                "content": "OCR",
+                "content": OCR_PROMPT,
                 "images": [raw]
             }]
         )
@@ -147,7 +157,7 @@ def ask_language() -> str:
 
 # ── stage 2: refine ────────────────────────────────────────
 def refine(text: str, mode: str, lang: str, model: str) -> str:
-    prompt = PROMPTS[mode] + "\n\n" + LANG_INSTRUCTION[lang]
+    prompt = REFINE_PROMPTS[mode] + "\n\n" + LANG_INSTRUCTION[lang]
     print(f"\n[refine] mode={mode} lang={lang} model={model}")
     print(f"[refine] sending {len(text)} chars...", end=" ", flush=True)
 
