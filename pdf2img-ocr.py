@@ -82,15 +82,25 @@ def ocr_pdf(path: str, dpi: int = 200) -> str:
     total_tokens = 0
 
     for i, page in enumerate(pages):
-        page_start = time.time()
-        print(f"[page {i+1}/{len(pages)}] encoding image...", end=" ", flush=True)
+        text, tokens = extract_page(i, page, len(pages), ocr_model)
+        total_tokens += tokens
+        full_text.append(f"--- Page {i+1} ---\n{text}")
 
-        buf = BytesIO()
-        page.save(buf, format="PNG")
-        raw = buf.getvalue()
-        print(f"done ({len(raw)/1024:.1f} KB)")
+    print(f"\n[ocr] completed in {time.time() - start_total:.2f}s")
+    return "\n\n".join(full_text), total_tokens
 
-        print(f"[page {i+1}/{len(pages)}] sending to {ocr_model}...", end=" ", flush=True)
+
+def extract_page(i: int, page, total_pages: int, ocr_model: str) -> tuple[str, int]:
+    page_start = time.time()
+    print(f"[page {i+1}/{total_pages}] encoding image...", end=" ", flush=True)
+
+    buf = BytesIO()
+    page.save(buf, format="PNG")
+    raw = buf.getvalue()
+    print(f"done ({len(raw)/1024:.1f} KB)")
+
+    print(f"[page {i+1}/{total_pages}] sending to {ocr_model}...", end=" ", flush=True)
+    try:
         response: ChatResponse = chat(
             model=ocr_model,
             options={"temperature": 0, "think": False, "num_predict": 4096},
@@ -106,16 +116,15 @@ def ocr_pdf(path: str, dpi: int = 200) -> str:
                 }
             ]
         )
+    except Exception as e:
+        print(f"\n[page {i+1}] error: {e}")
+        return f"[missing page {i+1}]", 3  # return placeholder text and token count for error case
 
-        text = response.message.content
-        total_tokens += response.eval_count or 0  # output tokens from ollama
-        
-        elapsed = time.time() - page_start
-        print(f"done ({elapsed:.2f}s, {len(text)} chars, {response.eval_count or 0} tokens)")
-        full_text.append(f"--- Page {i+1} ---\n{text}")
-
-    print(f"\n[ocr] completed in {time.time() - start_total:.2f}s")
-    return {"text": "\n\n".join(full_text), "tokens": total_tokens}
+    text = response.message.content
+    tokens = response.eval_count or 0
+    elapsed = time.time() - page_start
+    print(f"done ({elapsed:.2f}s, {len(text)} chars, {tokens} tokens)")
+    return text, tokens
 
 
 # ── stage 1.5: eject ──────────────────────────────────────
@@ -216,22 +225,22 @@ if __name__ == "__main__":
         exit(1)
     ocr_model = ask_model(vision_models, label="vision model")
 
-    ocr_result = ocr_pdf(args.file, dpi=args.dpi)
+    text, token = ocr_pdf(args.file, dpi=args.dpi)
     eject_model(ocr_model)
 
-    mode = ask_mode(ocr_result["text"].split("\n\n"), ocr_result["tokens"])
+    mode = ask_mode(text.split("\n\n"), token)
 
     if mode == "skip":
-        save_outputs(ocr_result["text"], None, timestamp)
+        save_outputs(text, None, timestamp)
     else:
         refine_models = list_models(REFINE_MODEL_KEYWORDS)
         if not refine_models:
             print("[error] no refine models found. check REFINE_MODEL_KEYWORDS.")
-            save_outputs(ocr_result["text"], None, timestamp)
+            save_outputs(text, None, timestamp)
         else:
             model = ask_model(refine_models, label="refine model")
             lang = ask_language()
-            compiled_text = refine(ocr_result["text"], mode, lang, model)
-            save_outputs(ocr_result["text"], compiled_text, timestamp)
+            compiled_text = refine(text, mode, lang, model)
+            save_outputs(text, compiled_text, timestamp)
 
     print("\n[done]")
