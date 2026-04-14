@@ -91,7 +91,7 @@ def list_models(keywords: list[str]) -> list[str]:
     return models
 
 # ── stage 1: OCR ───────────────────────────────────────────
-def ocr_pdf(path: str, dpi: int = 200, num_predict: int = 4096) -> str:
+def ocr_pdf(path: str, ocr_model: str, dpi: int = 200, num_predict: int = 4096) -> tuple[list[str], int, int]:
     print(f"[init] loading PDF: {path}")
     start_total = time.time()
 
@@ -124,7 +124,9 @@ def extract_page(i: int, page, total_pages: int, ocr_model: str, num_predict: in
     try:
         response: ChatResponse = chat(
             model=ocr_model,
-            options={"temperature": 0, "think": False, "num_predict": num_predict},
+            options={"temperature": 0, "num_ctx": 8192, "num_predict": num_predict},
+            stream=False,
+            think=False,
             messages=[
                 {
                     "role": "system",
@@ -200,7 +202,7 @@ def refine(text: str, mode: str, lang: str, model: str) -> str:
     start = time.time()
     response: ChatResponse = chat(
         model=model,
-        options={"temperature": temp},
+        options={"temperature": temp, "num_predict": 8192, "num_ctx": 32768},
         messages=[
             {"role": "system", "content": prompt},
             {"role": "user", "content": text}
@@ -258,7 +260,7 @@ if __name__ == "__main__":
         exit(1)
     ocr_model = ask_model(vision_models, label="vision model")
 
-    text, token, page_count = ocr_pdf(args.file, dpi=args.dpi, num_predict=args.num_predict)
+    text, token, page_count = ocr_pdf(args.file, ocr_model=ocr_model, dpi=args.dpi, num_predict=args.num_predict)
     eject_model(ocr_model)
     save_raw(text, timestamp, file=args.file, pages=page_count, dpi=args.dpi, model=ocr_model)
 
