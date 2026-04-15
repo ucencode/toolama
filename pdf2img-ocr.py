@@ -92,6 +92,7 @@ VISION_MODEL_KEYWORDS = ["qwen3.5", "qwen3-vl", "qwen2.5vl", "deepseek-ocr", "ll
 REFINE_MODEL_KEYWORDS  = ["glm-5.1", "gemma4", "qwen3.5", "gpt-oss"]
 
 REFINE_TEMPERATURE = {"clean": 0, "summary": 0, "deep": 0.4}
+REFINE_MAX_TOKENS = {"clean": 8192, "summary": 4096, "deep": 16384}
 
 
 # ── ollama model discovery ─────────────────────────────────
@@ -210,13 +211,14 @@ def ask_language() -> str:
 def refine(text: str, mode: str, lang: str, model: str) -> str:
     prompt = REFINE_PROMPTS[mode] + "\n\n" + LANG_INSTRUCTION[lang]
     temp = REFINE_TEMPERATURE.get(mode, 0)
-    print(f"\n[refine] mode={mode} lang={lang} model={model} temp={temp}")
+    max_tokens = REFINE_MAX_TOKENS.get(mode, 8192)
+    print(f"\n[refine] mode={mode} lang={lang} model={model} temp={temp} max_tokens={max_tokens}")
     print(f"[refine] sending {len(text)} chars...", end=" ", flush=True)
 
     start = time.time()
     response: ChatResponse = chat(
         model=model,
-        options={"temperature": temp, "num_predict": 8192, "num_ctx": 32768},
+        options={"temperature": temp, "num_predict": max_tokens, "num_ctx": 32768},
         messages=[
             {"role": "system", "content": prompt},
             {"role": "user", "content": text}
