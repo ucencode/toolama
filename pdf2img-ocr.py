@@ -28,7 +28,7 @@ OCR_PROMPT = """You are an expert OCR system. Transcribe all text from this imag
 - reproduce tables using markdown table format
 - for multi-column layouts, transcribe left to right, top to bottom
 - if text is partially visible or unclear, mark with [unclear: best guess] or [illegible]
-- for images or diagrams, describe with [image: clear description of the visual content]
+- for images or diagrams, describe with [image: description of what the diagram shows, including its main components and their relationships (up to 3 levels of detail)]
 - for screenshots of application interfaces or terminal output, describe the interface in at most 5 sentences prefixed with [screenshot: ...]. Do not transcribe every UI element.
 - ignore decorative elements: background images, borders, watermarks, repeated logos, slide templates
 - never repeat content that was already produced in the output; if the source genuinely contains repeated elements, transcribe them once and note the count (e.g., [repeated x3])
