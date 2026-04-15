@@ -31,6 +31,7 @@ OCR_PROMPT = """You are an expert OCR system. Transcribe all text from this imag
 - for images or diagrams, describe with [image: clear description of the visual content]
 - for screenshots of application interfaces or terminal output, transcribe all visible text within the screenshot as-is, prefixed with [screenshot: brief description of the application/interface]
 - ignore decorative elements: background images, borders, watermarks, repeated logos, slide templates
+- never repeat content that was already produced in the output; if the source genuinely contains repeated elements, transcribe them once and note the count (e.g., [repeated x3])
 - if the image contains no text, return [no text detected]
 - output only the transcribed text and permitted markers ([unclear: ...], [illegible], [image: ...], [screenshot: ...], [no text detected])
 - do not interpret, explain, or summarize beyond what is specified above"""
@@ -38,7 +39,7 @@ OCR_PROMPT = """You are an expert OCR system. Transcribe all text from this imag
 REFINE_PROMPTS = {
     "clean": """Clean the following OCR text:
 - fix OCR artifacts: misread characters (l/1, O/0, rn/m), broken words, stray symbols
-- fix obvious grammar/spelling errors caused by OCR, not the original author
+- fix all grammar/spelling errors for readability
 - merge sentences split across page boundaries
 - remove repeated headers, footers, and page numbers
 - preserve the original structure: headings, lists, paragraphs
@@ -48,9 +49,9 @@ REFINE_PROMPTS = {
 Return clean readable text.""",
 
     "summary": """Convert this into concise study notes:
-- organize by topic, not by page order
-- group related ideas under a heading, then 5–8 bullets per heading
-- keep only key ideas and practical examples from the source
+- if the content follows a sequential, procedural, or step-by-step flow, preserve the original ordering
+- otherwise, group related ideas by topic under clear headings
+- 5–8 bullets per heading, keep only key ideas and practical examples
 - drop abstract filler and non-essential explanations
 - avoid academic language — use plain, direct wording
 - make it easy to scan and understand quickly""",
