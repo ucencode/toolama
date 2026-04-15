@@ -29,11 +29,11 @@ OCR_PROMPT = """You are an expert OCR system. Transcribe all text from this imag
 - for multi-column layouts, transcribe left to right, top to bottom
 - if text is partially visible or unclear, mark with [unclear: best guess] or [illegible]
 - for images or diagrams, describe with [image: clear description of the visual content]
-- for screenshots of application interfaces or terminal output, transcribe all visible text within the screenshot as-is, prefixed with [screenshot: brief description of the application/interface]
+- for screenshots of application interfaces or terminal output, describe the interface in at most 5 sentences prefixed with [screenshot: ...]. Do not transcribe every UI element.
 - ignore decorative elements: background images, borders, watermarks, repeated logos, slide templates
 - never repeat content that was already produced in the output; if the source genuinely contains repeated elements, transcribe them once and note the count (e.g., [repeated x3])
 - if the image contains no text, return [no text detected]
-- output only the transcribed text and permitted markers ([unclear: ...], [illegible], [image: ...], [screenshot: ...], [no text detected])
+- output only the transcribed text and permitted markers ([unclear: ...], [illegible], [image: ...], [screenshot: ...], [no text detected], [repeated xN])
 - do not interpret, explain, or summarize beyond what is specified above"""
 
 REFINE_PROMPTS = {
@@ -89,10 +89,11 @@ LANG_INSTRUCTION = {
     "id": "Respond and deliver the output in Bahasa Indonesia."
 }
 
-VISION_MODEL_KEYWORDS = ["qwen3.5", "qwen3-vl", "qwen2.5vl", "deepseek-ocr", "llama3.2-vision", "gemma4", "ministral-3", "glm-ocr"]
+OCR_MODEL_KEYWORDS = ["qwen3.5", "qwen3-vl", "qwen2.5vl", "deepseek-ocr", "llama3.2-vision", "gemma4", "ministral-3", "glm-ocr"]
 REFINE_MODEL_KEYWORDS  = ["glm-5.1", "gemma4", "qwen3.5", "gpt-oss"]
 
 REFINE_TEMPERATURE = {"clean": 0, "summary": 0, "deep": 0.4}
+
 REFINE_MAX_TOKENS = {"clean": 8192, "summary": 4096, "deep": 16384}
 
 
@@ -107,7 +108,7 @@ def list_models(keywords: list[str]) -> list[str]:
     return models
 
 # ── stage 1: OCR ───────────────────────────────────────────
-def ocr_pdf(path: str, ocr_model: str, dpi: int = 200, num_predict: int = 4096) -> tuple[list[str], int, int]:
+def ocr_pdf(path: str, ocr_model: str, dpi: int = 200) -> tuple[list[str], int, int]:
     print(f"[init] loading PDF: {path}")
     start_total = time.time()
 
@@ -119,7 +120,7 @@ def ocr_pdf(path: str, ocr_model: str, dpi: int = 200, num_predict: int = 4096) 
     total_tokens = 0
 
     for i, page in enumerate(pages):
-        text, tokens = extract_page(i, page, len(pages), ocr_model, num_predict)
+        text, tokens = extract_page(i, page, len(pages), ocr_model)
         total_tokens += tokens
         full_text.append(f"--- Page {i+1} ---\n{text}")
 
@@ -127,7 +128,7 @@ def ocr_pdf(path: str, ocr_model: str, dpi: int = 200, num_predict: int = 4096) 
     return "\n\n".join(full_text), total_tokens, len(pages)
 
 
-def extract_page(i: int, page, total_pages: int, ocr_model: str, num_predict: int = 4096) -> tuple[str, int]:
+def extract_page(i: int, page, total_pages: int, ocr_model: str) -> tuple[str, int]:
     page_start = time.time()
     print(f"[page {i+1}/{total_pages}] encoding image...", end=" ", flush=True)
 
@@ -140,7 +141,7 @@ def extract_page(i: int, page, total_pages: int, ocr_model: str, num_predict: in
     try:
         response: ChatResponse = chat(
             model=ocr_model,
-            options={"temperature": 0, "num_ctx": 8192, "num_predict": num_predict},
+            options={"temperature": 0, "num_ctx": 8192, "num_predict": get_ocr_max_tokens(len(raw) / 1024)},
             stream=False,
             think=False,
             messages=[
@@ -165,6 +166,13 @@ def extract_page(i: int, page, total_pages: int, ocr_model: str, num_predict: in
     print(f"done ({elapsed:.2f}s, {len(text)} chars, {tokens} tokens)")
     return text, tokens
 
+def get_ocr_max_tokens(image_size_kb: int) -> int:
+    if image_size_kb < 500:
+        return 1024
+    elif image_size_kb < 1000:
+        return 2048
+    else:
+        return 4096
 
 # ── stage 1.5: eject ──────────────────────────────────────
 def eject_model(model: str):
@@ -235,7 +243,6 @@ def parse_args():
     parser = argparse.ArgumentParser(description="PDF OCR Pipeline")
     parser.add_argument("file", help="Path to PDF file")
     parser.add_argument("--dpi", type=int, default=200, help="Render DPI (default: 200)")
-    parser.add_argument("--num-predict", type=int, default=4096, help="Max tokens the model can generate per OCR page. Raise to 8192+ for dense textbook pages to avoid silent truncation (default: 4096)")
     return parser.parse_args()
 
 
@@ -271,13 +278,13 @@ if __name__ == "__main__":
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
 
     # pick vision model
-    vision_models = list_models(VISION_MODEL_KEYWORDS)
+    vision_models = list_models(OCR_MODEL_KEYWORDS)
     if not vision_models:
         print("[error] no vision models found. check VISION_MODEL_KEYWORDS.")
         exit(1)
     ocr_model = ask_model(vision_models, label="vision model")
 
-    text, token, page_count = ocr_pdf(args.file, ocr_model=ocr_model, dpi=args.dpi, num_predict=args.num_predict)
+    text, token, page_count = ocr_pdf(args.file, ocr_model=ocr_model, dpi=args.dpi)
     eject_model(ocr_model)
     save_raw(text, timestamp, file=args.file, pages=page_count, dpi=args.dpi, model=ocr_model)
 
