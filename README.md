@@ -60,11 +60,39 @@ TOML files in the `presets/` directory. See [`presets/example.toml`](presets/exa
 vision_model = "qwen3.5:9b"
 refine_model = "gpt-oss:120b-cloud"
 action = "deep"      # clean | summary | deep | skip
-lang = "en"          # en | id
+lang = "en"          # "auto" (preserve source language) or see supported languages below
 level = "beginner"   # beginner | intermediate | advanced
 ```
 
 Validation runs before processing — invalid models (not in `ollama list`), actions, languages, or levels will exit with a clear error.
+
+## Supported Languages
+
+| Code | Language |
+|------|----------|
+| `ar` | العربية (Arabic) |
+| `de` | Deutsch (German) |
+| `en` | English |
+| `es` | Español (Spanish) |
+| `fi` | Suomi (Finnish)* |
+| `fr` | Français (French) |
+| `hi` | हिन्दी (Hindi)* |
+| `id` | Bahasa Indonesia |
+| `it` | Italiano (Italian)* |
+| `ja` | 日本語 (Japanese)* |
+| `ko` | 한국어 (Korean)* |
+| `nl` | Nederlands (Dutch)* |
+| `pl` | Polski (Polish)* |
+| `pt` | Português (Portuguese) |
+| `ru` | Русский (Russian) |
+| `sv` | Svenska (Swedish)* |
+| `th` | ภาษาไทย (Thai)* |
+| `tr` | Türkçe (Turkish)* |
+| `uk` | Українська (Ukrainian)* |
+| `vi` | Tiếng Việt (Vietnamese)* |
+| `zh` | 简体中文 (Chinese) |
+
+\* Output quality depends on the refine model's proficiency in this language.
 
 ## Refine Modes
 
@@ -79,6 +107,8 @@ Validation runs before processing — invalid models (not in `ollama list`), act
 
 ```
 outputs/
-  <timestamp>-raw.txt       <- raw OCR text per page
-  <timestamp>-compiled.txt  <- refined output (if selected)
+  <timestamp>-raw.txt       <- raw OCR text with metadata (file, pages, dpi, model)
+  <timestamp>-compiled.txt  <- refined output with metadata (origin, model, mode, lang, level)
 ```
+
+Raw OCR results are cached per PDF filename and vision model. Re-running the same file with the same model skips OCR and reuses the cached output.
