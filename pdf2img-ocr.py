@@ -110,9 +110,31 @@ Writing rules:
 }
 
 LANG_INSTRUCTION = {
-    "en": "Respond and deliver the output in English.",
-    "id": "Respond and deliver the output in Bahasa Indonesia."
+    "auto": "the same language as the source content",
+    "ar": "العربية (Arabic)",
+    "de": "Deutsch (German)",
+    "en": "English",
+    "es": "Español (Spanish)",
+    "fi": "Suomi (Finnish)",
+    "fr": "Français (French)",
+    "hi": "हिन्दी (Hindi)",
+    "id": "Bahasa Indonesia",
+    "it": "Italiano (Italian)",
+    "ja": "日本語 (Japanese)",
+    "ko": "한국어 (Korean)",
+    "nl": "Nederlands (Dutch)",
+    "pl": "Polski (Polish)",
+    "pt": "Português (Portuguese)",
+    "ru": "Русский (Russian)",
+    "sv": "Svenska (Swedish)",
+    "th": "ภาษาไทย (Thai)",
+    "tr": "Türkçe (Turkish)",
+    "uk": "Українська (Ukrainian)",
+    "vi": "Tiếng Việt (Vietnamese)",
+    "zh": "简体中文 (Chinese)",
 }
+
+LANG_EXPERIMENTAL = {"ja", "ko", "it", "nl", "pl", "tr", "hi", "vi", "uk", "fi", "sv", "th"}
 
 AUDIENCE_INSTRUCTION = {
     "beginner": "Assume the reader has no prior knowledge of the topic. Explain foundational concepts before building on them.",
@@ -255,9 +277,15 @@ def ask_model(models: list[str], label: str = "model") -> str:
         return models[0]
 
 def ask_language() -> str:
-    print("\nLanguage for compiled output? (en / id) [default: en]")
-    lang = input(">>> ").strip().lower() or "en"
-    return lang if lang in ("en", "id") else "en"
+    codes = list(LANG_INSTRUCTION.keys())
+    print(f"\nLanguage for compiled output? ({' / '.join(codes)}) [default: auto]")
+    lang = input(">>> ").strip().lower() or "auto"
+    if lang not in LANG_INSTRUCTION:
+        print(f"[warn] unknown language '{lang}', using auto")
+        return "auto"
+    if lang in LANG_EXPERIMENTAL:
+        print(f"[warn] '{LANG_INSTRUCTION[lang]}' output quality depends on the refine model's proficiency in this language. Results may vary.")
+    return lang
 
 def ask_audience() -> str:
     print("""
@@ -272,13 +300,14 @@ Audience level? (
 
 # ── stage 2: refine ────────────────────────────────────────
 def refine(text: str, mode: str, lang: str, model: str, audience: str | None = None) -> str:
-    prompt = REFINE_PROMPTS[mode] + "\n\n" + LANG_INSTRUCTION[lang]
+    lang_name = LANG_INSTRUCTION[lang]
+    prompt = REFINE_PROMPTS[mode] + "\n\n" + f"Respond and deliver the output in {lang_name}."
     if audience:
         prompt += "\n\n" + AUDIENCE_INSTRUCTION[audience]
     temp = REFINE_TEMPERATURE.get(mode, 0)
     max_tokens = REFINE_MAX_TOKENS.get(mode, 8192)
     level_str = f" audience={audience}" if audience else ""
-    print(f"\n[refine] mode={mode} lang={lang}{level_str} model={model} temp={temp} max_tokens={max_tokens}")
+    print(f"\n[refine] mode={mode} lang={lang_name}{level_str} model={model} temp={temp} max_tokens={max_tokens}")
     print(f"[refine] sending {len(text)} chars...", end=" ", flush=True)
 
     start = time.time()
@@ -443,6 +472,8 @@ if __name__ == "__main__":
 
         ocr_model = config["vision_model"]
         print(f"[config] vision_model={ocr_model} action={config['action']} lang={config['lang']} level={config['level']}")
+        if config["lang"] in LANG_EXPERIMENTAL:
+            print(f"[warn] '{LANG_INSTRUCTION[config['lang']]}' output quality depends on the refine model's proficiency in this language. Results may vary.")
 
         existing_raw = find_existing_raw(args.file, ocr_model)
         if existing_raw:
