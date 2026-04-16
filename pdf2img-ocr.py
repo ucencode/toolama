@@ -32,6 +32,7 @@ OCR_PROMPT = """You are an expert OCR system. Transcribe all text from this imag
 - if text is partially visible or unclear, mark with [unclear: best guess] or [illegible]
 - for images or diagrams, describe with [image: description of what the diagram shows, including its main components and their relationships (up to 3 levels of detail)]
 - for screenshots of application interfaces or terminal output, describe the interface in at most 5 sentences prefixed with [screenshot: ...]. Do not transcribe every UI element.
+- if a diagram contains more than 20 distinct labeled elements, describe it as [image: ...] only — do not attempt to enumerate all elements
 - ignore decorative elements: background images, borders, watermarks, repeated logos, slide templates
 - never repeat content that was already produced in the output; if the source genuinely contains repeated elements, transcribe them once and note the count (e.g., [repeated x3])
 - if the image contains no text, return [no text detected]
@@ -39,8 +40,7 @@ OCR_PROMPT = """You are an expert OCR system. Transcribe all text from this imag
 - do not interpret, explain, or summarize beyond what is specified above"""
 
 # TODO: Add LaTeX support for mathematical expressions
-REFINE_BASE = """- you are processing OCR output from presentation slides (lectures, meetings, \
-competitions, pitches, or similar). treat the input as structured slide content, not free-form text
+REFINE_BASE = """- you are processing OCR output from presentation slides (lectures, meetings, competitions, pitches, or similar). treat the input as structured slide content, not free-form text
 - treat [image: ...], [unclear: ...], [illegible], and [repeated xN] as structured OCR markers — preserve or handle them as the mode requires, never discard as noise
 - preserve page boundary markers exactly as they appear (e.g., --- Page N ---)
 - do NOT present source-specific details as general truths
