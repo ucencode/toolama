@@ -39,10 +39,8 @@ OCR_PROMPT = """You are an expert OCR system. Transcribe all text from this imag
 - output only the transcribed text and permitted markers ([unclear: ...], [illegible], [image: ...], [screenshot: ...], [no text detected], [repeated xN])
 - do not interpret, explain, or summarize beyond what is specified above"""
 
-# TODO: Add LaTeX support for mathematical expressions
 REFINE_BASE = """- you are processing OCR output from presentation slides (lectures, meetings, competitions, pitches, or similar)
 - do NOT present source-specific details as general truths
-- do NOT use LaTeX notation
 - treat real-world examples (job postings, ads, announcements, screenshots, etc.) as contextual illustrations only — summarize relevance without preserving personal details (names, emails, phone numbers)
 - preserve locations only when relevant to the topic being explained; omit if tied only to a specific posting or announcement"""
 
