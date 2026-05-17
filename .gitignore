@@ -16,13 +16,16 @@ build/
 # PDF input files
 *.pdf
 
-# Output files (keep folder, ignore content)
-outputs/*
-!outputs/.gitkeep
+# Output files (keep folders, ignore content)
+outputs/**
+!outputs/ocr/
+!outputs/ocr/.gitkeep
+!outputs/generator/
+!outputs/generator/.gitkeep
 
 # Presets (keep example only)
-presets/*
-!presets/example.toml
+tools/ocr/presets/*
+!tools/ocr/presets/example.toml
 
 # OS
 .DS_Store

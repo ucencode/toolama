@@ -47,6 +47,9 @@ LANG_EXPERIMENTAL = {
 
 MODES = ("plan", "full")
 
+OUTPUT_DIR = Path(__file__).parent.parent.parent / "outputs" / "generator"
+INPUT_DIR  = Path(__file__).parent.parent.parent / "inputs"
+
 
 # ── system prompts ────────────────────────────────────────────────────────────
 
@@ -237,12 +240,11 @@ Mode?
 
 
 def ask_file() -> str:
-    from glob import glob
-    txt_files = sorted(glob("*.txt"))
+    txt_files = sorted(INPUT_DIR.glob("*.txt")) if INPUT_DIR.exists() else []
     if txt_files:
-        print("\nCurriculum file? (found in current directory:)")
+        print(f"\nCurriculum file? (found in inputs/):")
         for i, f in enumerate(txt_files, 1):
-            print(f"  {i}. {f}")
+            print(f"  {i}. {f.name}")
         print("Or enter a path manually.")
     else:
         print("\nCurriculum file? (path to .txt file)")
@@ -250,7 +252,7 @@ def ask_file() -> str:
     if choice.isdigit() and txt_files:
         idx = int(choice) - 1
         if 0 <= idx < len(txt_files):
-            return txt_files[idx]
+            return str(txt_files[idx])
     return choice
 
 
@@ -422,7 +424,7 @@ def generate_material(raw: str, topics: list[str], lang: str, model: str) -> str
 # ── cache ─────────────────────────────────────────────────────────────────────
 
 def find_cached(input_file: str, model: str, lang: str, mode: str) -> Path | None:
-    output_dir = Path("./outputs")
+    output_dir = OUTPUT_DIR
     if not output_dir.exists():
         return None
     basename = os.path.basename(input_file)
@@ -458,11 +460,11 @@ def _read_frontmatter(path: Path) -> dict:
 
 def save_output(frontmatter: str, sections: list[tuple[str, str]],
                 input_file: str, model: str, lang: str, mode: str) -> Path:
-    os.makedirs("./outputs", exist_ok=True)
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
     slug      = re.sub(r"[^\w]+", "_", Path(input_file).stem.lower()).strip("_")[:40]
     suffix    = "study_plan" if mode == "plan" else "full"
-    path      = Path(f"./outputs/{timestamp}-{slug}-{suffix}.md")
+    path      = OUTPUT_DIR / f"{timestamp}-{slug}-{suffix}.md"
 
     fm = frontmatter.rstrip().removesuffix("---")
     fm += f'\nsource: "{os.path.basename(input_file)}"\n'

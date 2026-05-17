@@ -141,6 +141,8 @@ AUDIENCE_INSTRUCTION = {
 OCR_MODEL_KEYWORDS = ["qwen3.5", "qwen3-vl", "qwen2.5vl", "deepseek-ocr", "llama3.2-vision", "gemma4", "ministral-3", "glm-ocr"]
 REFINE_MODEL_KEYWORDS  = ["glm-5.1", "gemma4", "qwen3.5", "gpt-oss"]
 
+OUTPUT_DIR = Path(__file__).parent.parent.parent / "outputs" / "ocr"
+
 REFINE_TEMPERATURE = {"clean": 0, "summary": 0, "deep": 0.4}
 
 REFINE_MAX_TOKENS = {"clean": 65536, "summary": 65536, "deep": 131072}
@@ -381,7 +383,7 @@ def check_preset(config: dict, filename: str) -> None:
 # ── cache lookup ──────────────────────────────────────────
 def find_existing_raw(pdf_file: str, ocr_model: str) -> str | None:
     """Search outputs/ for an existing raw OCR file matching the same PDF basename and model."""
-    output_dir = Path("./outputs")
+    output_dir = OUTPUT_DIR
     if not output_dir.exists():
         return None
     basename = os.path.basename(pdf_file)
@@ -420,8 +422,8 @@ def load_raw_text(raw_path) -> str:
 
 # ── output ─────────────────────────────────────────────────
 def save_raw(text: str, timestamp: str, file: str, pages: int, dpi: int, model: str):
-    os.makedirs("./outputs", exist_ok=True)
-    raw_path = f"./outputs/{timestamp}-raw.txt"
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    raw_path = OUTPUT_DIR / f"{timestamp}-raw.txt"
     metadata = f"""---
 file: {os.path.basename(file)}
 timestamp: {timestamp}
@@ -431,15 +433,15 @@ model: {model}
 ---
 
 """
-    with open(raw_path, "w") as f:
+    with open(str(raw_path), "w") as f:
         f.write(metadata + text)
     print(f"[output] raw      → {raw_path}")
 
 
 def save_refined(text: str, timestamp: str, *, origin: str, raw_file: str,
                   model: str, mode: str, lang: str, level: str | None):
-    os.makedirs("./outputs", exist_ok=True)
-    compiled_path = f"./outputs/{timestamp}-compiled.txt"
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    compiled_path = OUTPUT_DIR / f"{timestamp}-compiled.txt"
     level_num = {"beginner": 1, "intermediate": 2, "advanced": 3}.get(level, "n/a")
     metadata = f"""---
 origin: {origin}
@@ -452,7 +454,7 @@ level: {level_num}
 ---
 
 """
-    with open(compiled_path, "w") as f:
+    with open(str(compiled_path), "w") as f:
         f.write(metadata + text)
     print(f"[output] compiled → {compiled_path}")
 

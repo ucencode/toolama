@@ -23,13 +23,13 @@ def parse_args():
 def main():
     args = parse_args()
 
-    project_root = Path(__file__).parent.resolve()
-    main_script = project_root / "pdf2img-ocr.py"
+    project_root = Path(__file__).parent.parent.parent.resolve()
+    main_script = Path(__file__).parent / "pdf2img-ocr.py"
 
-    pdfs = sorted(project_root.glob("*.pdf"))
+    pdfs = sorted((project_root / "inputs").glob("*.pdf"))
 
     if not pdfs:
-        print("No PDF files found in the project root.")
+        print("No PDF files found in inputs/.")
         sys.exit(1)
 
     total = len(pdfs)
