@@ -142,6 +142,7 @@ OCR_MODEL_KEYWORDS = ["qwen3.5", "qwen3-vl", "qwen2.5vl", "deepseek-ocr", "llama
 REFINE_MODEL_KEYWORDS  = ["glm-5.1", "gemma4", "qwen3.5", "gpt-oss"]
 
 OUTPUT_DIR = Path(__file__).parent.parent.parent / "outputs" / "ocr"
+INPUT_DIR  = Path(__file__).parent.parent.parent / "inputs"
 
 REFINE_TEMPERATURE = {"clean": 0, "summary": 0, "deep": 0.4}
 
@@ -246,6 +247,8 @@ def eject_model(model: str):
 
 
 # ── interactive prompts ────────────────────────────────────
+
+
 def ask_mode(raw_pages: list[str], total_tokens: int) -> str:
     total_chars = sum(len(p) for p in raw_pages)
     approx_tokens = total_tokens 
@@ -325,7 +328,7 @@ def refine(text: str, mode: str, lang: str, model: str, audience: str | None = N
 # ── args ───────────────────────────────────────────────────
 def parse_args():
     parser = argparse.ArgumentParser(description="PDF OCR Pipeline")
-    parser.add_argument("file", help="Path to PDF file")
+    parser.add_argument("file", nargs="?", help="Path to PDF file (interactive picker if omitted)")
     parser.add_argument("--dpi", type=int, default=200, help="Render DPI (default: 200)")
     parser.add_argument("--preset", type=str, metavar="FILE",
                         help="Load preset from presets/<FILE>, skip interactive prompts")
@@ -462,6 +465,12 @@ level: {level_num}
 # ── main ───────────────────────────────────────────────────
 if __name__ == "__main__":
     args = parse_args()
+    if not args.file:
+        print("[usage] python pdf2img-ocr.py <file.pdf> [--preset <FILE>] [--dpi <N>]")
+        exit(1)
+    if not Path(args.file).exists():
+        print(f"[error] file not found: {args.file!r}")
+        exit(1)
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
 
     if args.preset:
